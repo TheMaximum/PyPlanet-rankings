@@ -7,7 +7,7 @@ from pyplanet.apps.config import AppConfig
 from peewee import fn, RawQuery
 
 from pyplanet.apps.core.maniaplanet.models import Player
-from pyplanet.apps.core.maniaplanet.callbacks import map
+from pyplanet.apps.core.maniaplanet import callbacks as mp_signals
 from pyplanet.contrib.command import Command
 from pyplanet.contrib.setting import Setting
 
@@ -39,7 +39,8 @@ class Rankings(AppConfig):
 
 	async def on_start(self):
 		# Listen to signals.
-		self.context.signals.listen(map.map_end, self.on_map_end)
+		self.context.signals.listen(mp_signals.map.map_end, self.map_end)
+		self.context.signals.listen(mp_signals.player.player_connect, self.player_connect)
 
 		# Register commands.
 		await self.instance.command_manager.register(
@@ -52,7 +53,7 @@ class Rankings(AppConfig):
 		# Register settings
 		await self.context.setting.register(self.setting_records_required, self.setting_chat_announce, self.setting_topranks_limit)
 
-	async def on_map_end(self, map):
+	async def map_end(self, map):
 		# Calculate server ranks.
 		await self.calculate_server_ranks()
 
@@ -61,6 +62,9 @@ class Rankings(AppConfig):
 		if chat_announce:
 			for player in self.instance.player_manager.online:
 				await self.display_player_rank(player)
+
+	async def player_connect(self, player, is_spectator, source, signal):
+		await self.display_player_rank(player)
 
 	async def calculate_server_ranks(self):
 		# Rankings depend on the local records.
