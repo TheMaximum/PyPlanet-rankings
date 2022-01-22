@@ -1,11 +1,10 @@
 import math
-import logging
 
 from apps.rankings.models import Rank
 from apps.rankings.views import TopRanksView, NoRanksView
 from pyplanet.apps.config import AppConfig
 
-from peewee import fn, RawQuery, SelectQuery
+from peewee import RawQuery
 
 from pyplanet.apps.core.maniaplanet.models import Player, Map
 from pyplanet.apps.core.maniaplanet import callbacks as mp_signals
