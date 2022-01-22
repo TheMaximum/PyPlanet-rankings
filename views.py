@@ -1,3 +1,6 @@
+from playhouse.shortcuts import model_to_dict
+
+from pyplanet.apps.core.maniaplanet.models import Map
 from pyplanet.views.generics import ManualListView
 
 
@@ -69,3 +72,61 @@ class TopRanksView(ManualListView):
 				'type': 'label'
 			}
 		]
+
+
+class NoRanksView(ManualListView):
+	model = Map
+	title = 'Non-ranked maps on this server'
+	icon_style = 'Icons128x128_1'
+	icon_substyle = 'Browse'
+
+	def __init__(self, app, player, ranked_maps):
+		"""
+		Init no-rank list view.
+
+		:param player: Player instance.
+		:param app: App instance.
+		:type player: pyplanet.apps.core.maniaplanet.models.Player
+		"""
+		super().__init__(self)
+
+		self.app = app
+		self.player = player
+		self.manager = app.context.ui
+		self.ranked_maps = ranked_maps
+
+	async def get_fields(self):
+		return [
+			{
+				'name': 'Name',
+				'index': 'name',
+				'sorting': True,
+				'searching': True,
+				'search_strip_styles': True,
+				'width': 90,
+				'type': 'label',
+				'action': self.action_jukebox if ('jukebox' in self.app.instance.apps.apps) else None
+			},
+			{
+				'name': 'Author',
+				'index': 'author_login',
+				'sorting': True,
+				'searching': True,
+				'search_strip_styles': True,
+				'width': 45,
+			},
+		]
+
+	async def get_data(self):
+		data = list()
+
+		non_ranked_maps = [map for map in self.app.instance.map_manager.maps if map.id not in [ranked_map.id for ranked_map in self.ranked_maps]]
+		for non_ranked_map in non_ranked_maps:
+			map_dict = model_to_dict(non_ranked_map)
+			data.append(map_dict)
+
+		return data
+
+	async def action_jukebox(self, player, values, map_info, **kwargs):
+		await self.app.instance.apps.apps['jukebox'].add_to_jukebox(player, await self.app.instance.map_manager.get_map(map_info['uid']))
+

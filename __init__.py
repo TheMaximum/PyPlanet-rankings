@@ -1,12 +1,13 @@
 import math
+import logging
 
 from apps.rankings.models import Rank
-from apps.rankings.views import TopRanksView
+from apps.rankings.views import TopRanksView, NoRanksView
 from pyplanet.apps.config import AppConfig
 
-from peewee import fn, RawQuery
+from peewee import fn, RawQuery, SelectQuery
 
-from pyplanet.apps.core.maniaplanet.models import Player
+from pyplanet.apps.core.maniaplanet.models import Player, Map
 from pyplanet.apps.core.maniaplanet import callbacks as mp_signals
 from pyplanet.contrib.command import Command
 from pyplanet.contrib.setting import Setting
@@ -44,8 +45,8 @@ class Rankings(AppConfig):
 
 		# Register commands.
 		await self.instance.command_manager.register(
-			# Command('stats', target=self.open_stats),
 			Command('rank', target=self.chat_rank, description='Displays your current server rank.'),
+			Command('norank', target=self.chat_norank, description='Displays all maps where you have no ranking local.'),
 			Command('nextrank', target=self.chat_nextrank, description='Displays the player ahead of you in the server ranking.'),
 			Command('topranks', target=self.chat_topranks, description='Displays a list of top ranked players.'),
 		)
@@ -171,3 +172,39 @@ WHERE ranked_records_count >= @minimum_ranked_records
 
 		await self.instance.chat('$f80The next ranked player is $<$fff{}$>$f80 ($fff{}$f80), average: $fff{}$f80 [$fff-{} $f80RP]'.format(
 			next_ranked.player.nickname, next_player_rank_index, next_player_rank_average, next_player_rank_difference), player)
+
+	async def chat_norank(self, player, *args, **kwargs):
+		# Rankings depend on the local records.
+		if 'local_records' not in self.instance.apps.apps:
+			return
+
+		maximum_record_rank = await self.instance.apps.apps['local_records'].setting_record_limit.get_value()
+
+		query = '''SELECT
+	map.*
+FROM
+(
+	SELECT
+		id,
+		map_id,
+		player_id,
+		score,
+		@player_rank := IF(@current_rank = map_id, @player_rank + 1, 1) AS player_rank,
+		@current_rank := map_id
+	FROM localrecord r,
+		(SELECT @player_rank := 0) pr,
+		(SELECT @current_rank := 0) cr
+	ORDER BY map_id, score ASC
+) AS ranked_records
+
+INNER JOIN map
+ON map.id = map_id
+
+WHERE player_rank <= {}
+AND player_id = {}'''.format(maximum_record_rank, player.id)
+
+		select_query = RawQuery(Map, query)
+		ranked_maps = [map for map in await Map.execute(select_query)]
+
+		view = NoRanksView(self, player, ranked_maps)
+		await view.display(player)
