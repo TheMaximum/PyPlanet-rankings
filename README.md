@@ -7,6 +7,11 @@ This repository contains a MySQL-dependant TrackMania rankings app for PyPlanet,
 * Edit ``pyplanet/settings/apps.py``:
   * Add ``'apps.rankings'`` as new line in the file
 
+## Update plugin
+* ``cd pyplanet/apps``
+* ``git pull``
+* Restart PyPlanet
+
 ## Plugin commands
 * `/rank` - shows the current server rank;
 * `/nextrank` - shows the next ranked player and the difference in "rankpoints" (difference in local record rank);
