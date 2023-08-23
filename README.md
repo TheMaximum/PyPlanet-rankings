@@ -1,3 +1,4 @@
+**This app is now part of the PyPlanet release, add `'pyplanet.apps.contrib.rankings'` to your `settings/apps.py` file.**
 # PyPlanet-rankings
 This repository contains a MySQL-dependant TrackMania rankings app for PyPlanet, based on the ranking calculations in RASP (former (X)Aseco plugin).
 
